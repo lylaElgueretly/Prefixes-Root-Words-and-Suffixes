@@ -1,0 +1,549 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Prefix Builder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Lexend:wght@400;500;600&display=swap">
+<style>
+/* Layout: one calm column. Words are built from coloured blocks: blue prefix, amber root word, green suffix. The blocks split apart when a card opens. */
+:root {
+  --bg: #f3f5fb;
+  --surface: #ffffff;
+  --fg: #121a33;
+  --muted: #475072;
+  --line: #d4dbee;
+  --prefix: #2d4fe0;
+  --prefix-ink: #ffffff;
+  --root: #ffd24a;
+  --root-ink: #2a2200;
+  --suffix: #3b7d14;
+  --suffix-ink: #ffffff;
+  --good: #0f7a4a;
+  --good-bg: #dcf4e7;
+  --bad: #b3261e;
+  --bad-bg: #fde3e0;
+  --focus: #2d4fe0;
+  --display: "Bricolage Grotesque", "Trebuchet MS", system-ui, sans-serif;
+  --body: "Lexend", "Segoe UI", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1424;
+    --surface: #172038;
+    --fg: #eef1fb;
+    --muted: #b0b9d8;
+    --line: #2d3860;
+    --prefix: #7b97ff;
+    --prefix-ink: #0b1230;
+    --root: #ffd24a;
+    --root-ink: #2a2200;
+    --suffix: #9ad65a;
+    --suffix-ink: #14260a;
+    --good: #5fd49b;
+    --good-bg: #123325;
+    --bad: #ff8a80;
+    --bad-bg: #3a1a1a;
+    --focus: #9db2ff;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1424;
+  --surface: #172038;
+  --fg: #eef1fb;
+  --muted: #b0b9d8;
+  --line: #2d3860;
+  --prefix: #7b97ff;
+  --prefix-ink: #0b1230;
+  --root: #ffd24a;
+  --root-ink: #2a2200;
+  --suffix: #9ad65a;
+  --suffix-ink: #14260a;
+  --good: #5fd49b;
+  --good-bg: #123325;
+  --bad: #ff8a80;
+  --bad-bg: #3a1a1a;
+  --focus: #9db2ff;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--body);
+  font-size: 17px;
+  line-height: 1.6;
+}
+.wrap { max-width: 60rem; margin-inline: auto; padding-inline: 16px; padding-block: 28px 56px; }
+h1 { font-family: var(--display); font-weight: 800; font-size: clamp(2.1rem, 7vw, 3.2rem); line-height: 1.05; margin: 0 0 12px; text-wrap: balance; }
+h2 { font-family: var(--display); font-weight: 700; font-size: 1.4rem; line-height: 1.2; margin: 0 0 8px; text-wrap: balance; }
+p { margin: 0; }
+.lede { max-width: 42rem; color: var(--muted); }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+
+.def { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-block: 20px 0; display: grid; gap: 12px; }
+.legend { display: grid; gap: 10px; }
+.lrow { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
+.sum { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-weight: 500; }
+
+.tabs { display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 2px solid var(--line); margin-block: 28px 22px; }
+.tab { font: inherit; font-weight: 600; padding: 10px 16px; background: none; border: 0; border-bottom: 4px solid transparent; margin-bottom: -2px; color: var(--muted); cursor: pointer; }
+.tab[aria-selected="true"] { color: var(--fg); border-bottom-color: var(--prefix); }
+
+.bar-tools { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.btn { font: inherit; font-weight: 600; padding: 10px 16px; border-radius: 8px; border: 2px solid var(--fg); background: transparent; color: var(--fg); cursor: pointer; }
+.btn.primary { background: var(--prefix); border-color: var(--prefix); color: var(--prefix-ink); }
+.btn.small { padding: 6px 12px; font-size: .9rem; }
+
+/* word blocks */
+.tiles { display: inline-flex; flex-wrap: wrap; font-family: var(--display); font-weight: 800; font-size: clamp(1.25rem, 5vw, 1.6rem); line-height: 1; max-width: 100%; transition: gap .2s ease; }
+.t { padding: .45em .55em; overflow-wrap: anywhere; border-radius: 0; transition: border-radius .2s ease; }
+.t:first-child { border-radius: 8px 0 0 8px; }
+.t:last-child { border-radius: 0 8px 8px 0; }
+.t:only-child { border-radius: 8px; }
+.t.prefix, .t.combo { background: var(--prefix); color: var(--prefix-ink); }
+.t.root { background: var(--root); color: var(--root-ink); }
+.t.suffix { background: var(--suffix); color: var(--suffix-ink); }
+.t.n { background: var(--line); color: var(--fg); }
+.card.open .tiles { gap: 6px; }
+.card.open .t { border-radius: 8px; }
+
+.chip { display: inline-block; padding: 1px 8px; border-radius: 5px; font-weight: 600; }
+.chip.prefix, .chip.combo { background: var(--prefix); color: var(--prefix-ink); }
+.chip.root { background: var(--root); color: var(--root-ink); }
+.chip.suffix { background: var(--suffix); color: var(--suffix-ink); }
+
+.grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr)); align-items: start; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; min-width: 0; }
+.wordbtn { font: inherit; color: inherit; text-align: left; width: 100%; background: none; border: 0; padding: 16px; cursor: pointer; display: grid; gap: 12px; justify-items: start; border-radius: 12px; }
+.hint { font-size: .9rem; color: var(--muted); }
+.h-open { display: none; }
+.card.open .h-open { display: inline; }
+.card.open .h-closed { display: none; }
+.detail { padding: 0 16px 16px; display: grid; gap: 14px; }
+.row { display: grid; gap: 3px; min-width: 0; }
+.lab { font-size: .75rem; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.mean { font-weight: 600; font-size: 1.05rem; }
+.note { background: var(--bg); border-radius: 8px; padding: 10px 12px; font-size: .95rem; }
+.eq { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-weight: 500; }
+.parts { display: grid; gap: 10px; }
+.prow { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; min-width: 0; }
+.badge { font-size: .8rem; border: 1px solid var(--line); border-radius: 4px; padding: 0 6px; color: var(--muted); }
+.src { font-size: .85rem; color: var(--muted); }
+
+/* families */
+.callout { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: grid; gap: 8px; margin-bottom: 16px; }
+.fam { display: grid; grid-template-columns: minmax(0, 14rem) minmax(0, 1fr); gap: 14px; align-items: center; padding-block: 16px; border-top: 1px solid var(--line); }
+.fam .lead { display: grid; gap: 6px; justify-items: start; }
+.fam .lead .t { border-radius: 8px; font-family: var(--display); font-weight: 800; font-size: 1.5rem; line-height: 1; padding: .45em .6em; }
+.fam .says { font-weight: 600; }
+.wchips { display: flex; flex-wrap: wrap; gap: 8px; }
+.wchip { font: inherit; font-weight: 500; font-size: 1.05rem; padding: 8px 12px; border-radius: 8px; border: 2px solid var(--line); background: var(--surface); color: var(--fg); cursor: pointer; }
+.wchip .hl { border-radius: 4px; padding: 0 4px; }
+.hl.prefix { background: var(--prefix); color: var(--prefix-ink); }
+.hl.suffix { background: var(--suffix); color: var(--suffix-ink); }
+.sech { margin-block: 24px 4px; }
+@media (max-width: 560px) { .fam { grid-template-columns: 1fr; } }
+
+/* quiz */
+.qhead { display: flex; justify-content: space-between; gap: 12px; font-weight: 600; margin-bottom: 8px; font-variant-numeric: tabular-nums; }
+.bar { height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; margin-bottom: 18px; }
+.bar i { display: block; height: 100%; background: var(--prefix); }
+.qcard { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 18px; display: grid; gap: 16px; }
+.q { font-family: var(--display); font-weight: 700; font-size: 1.3rem; line-height: 1.25; text-wrap: balance; }
+.choices { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); }
+.choice { font: inherit; text-align: left; padding: 14px; min-height: 3.4rem; border-radius: 10px; border: 2px solid var(--line); background: var(--bg); color: var(--fg); cursor: pointer; }
+.choice[disabled] { cursor: default; color: var(--fg); }
+.choice.right { border-color: var(--good); background: var(--good-bg); }
+.choice.wrong { border-color: var(--bad); background: var(--bad-bg); border-style: dashed; }
+.tag { display: block; font-size: .8rem; font-weight: 600; margin-top: 2px; }
+.fb { padding: 14px; border-radius: 10px; border: 2px solid var(--line); background: var(--bg); display: grid; gap: 4px; }
+.fb.good { border-color: var(--good); background: var(--good-bg); }
+.fb.bad { border-color: var(--bad); background: var(--bad-bg); }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.score { font-family: var(--display); font-weight: 800; font-size: 2.6rem; line-height: 1; font-variant-numeric: tabular-nums; }
+
+footer { margin-top: 36px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--muted); font-size: .92rem; display: grid; gap: 8px; max-width: 46rem; }
+footer ul { margin: 0; padding-left: 1.1rem; display: grid; gap: 4px; }
+
+@media (prefers-reduced-motion: reduce) { .tiles, .t { transition: none; } }
+</style>
+
+<div class="wrap">
+  <h1>Prefix Builder</h1>
+  <p class="lede">Every word is built from parts. This guide splits 13 words into a prefix, a root word and a suffix. Then you can learn them and test yourself.</p>
+
+  <div class="def">
+    <h2>The three parts of a word</h2>
+    <div class="legend">
+      <div class="lrow"><span class="chip prefix">Prefix</span><span>Comes at the start. It changes the meaning of the word.</span></div>
+      <div class="lrow"><span class="chip root">Root word</span><span>The main part. It carries the core meaning.</span></div>
+      <div class="lrow"><span class="chip suffix">Suffix</span><span>Comes at the end. It changes the job of the word, or the tense.</span></div>
+    </div>
+    <div class="sum"><span class="chip prefix">un</span> + <span class="chip root">kind</span> + <span class="chip suffix">ness</span> = unkindness</div>
+    <p>Un means not. Kind means gentle and caring. Ness means the state of being. So unkindness means the state of not being kind.</p>
+    <p class="hint">Some roots are called bound roots. That means they cannot stand alone as a word, like tract in distracted. One word here, stereophonic, starts with a combining form instead of a prefix. A combining form is a word part from Greek that works a bit like a prefix.</p>
+  </div>
+
+  <div class="tabs" role="tablist" aria-label="Guide sections">
+    <button class="tab" role="tab" id="tab-learn" data-p="learn" aria-selected="true" aria-controls="learn">Learn the words</button>
+    <button class="tab" role="tab" id="tab-fam" data-p="fam" aria-selected="false" aria-controls="fam">Prefixes and suffixes</button>
+    <button class="tab" role="tab" id="tab-quiz" data-p="quiz" aria-selected="false" aria-controls="quiz">Test yourself</button>
+  </div>
+
+  <section class="panel" id="learn" role="tabpanel" aria-labelledby="tab-learn">
+    <div class="bar-tools">
+      <p class="lede">Tap a word to split it into its parts and see what it means.</p>
+      <div class="actions">
+        <button class="btn small" id="openAll">Open all</button>
+        <button class="btn small" id="closeAll">Close all</button>
+      </div>
+    </div>
+    <div class="grid" id="cards"></div>
+  </section>
+
+  <section class="panel" id="fam" role="tabpanel" aria-labelledby="tab-fam" hidden>
+    <div class="callout">
+      <h2>Same letters, different jobs</h2>
+      <p>The prefix in can mean into or not. In intimidated, in means into. In inevitable, in means not. Read the rest of the word and the sentence to decide which one it is.</p>
+      <p>Spelling pattern: in changes to im before the letters m, b and p. That is why you see im in immense and impaled.</p>
+    </div>
+    <h2 class="sech">Prefix families</h2>
+    <div id="families"></div>
+    <div class="callout" style="margin-top:16px">
+      <h2>Spelling changes when a suffix is added</h2>
+      <p>Some roots end in e. When the suffix ed is added, the two e letters join into one. Increase plus ed is increased, not increaseed. In intimidated, ate plus ed is ated.</p>
+    </div>
+    <h2 class="sech">Suffix families</h2>
+    <div id="sfamilies"></div>
+  </section>
+
+  <section class="panel" id="quiz" role="tabpanel" aria-labelledby="tab-quiz" hidden>
+    <div id="quizbox"></div>
+  </section>
+
+  <footer>
+    <p><b>Notes for teachers and parents</b></p>
+    <ul>
+      <li>The origins of distracted, intimidated, inevitable, immense, increased, stereophonic and impaled were checked against Etymonline. The other six were not checked, and each card says which it is. Check them in a dictionary before teaching them as fact.</li>
+      <li>Dictionaries can split some words differently. Immense, inevitable, increased and stereophonic are the most debatable. The splits here follow the origin given on each card.</li>
+      <li>Your list ended at im for impaled. The rest of the word was assumed to be paled.</li>
+      <li>Suffix and prefix meanings are written for a weaker Year 7 reader, so they are shorter than a dictionary entry.</li>
+    </ul>
+  </footer>
+</div>
+
+<script>
+const PM = {
+  hundredth: "one hundredth (1 out of 100)",
+  one: "one",
+  out: "outwards, or beyond",
+  apart: "apart, or away",
+  into: "into",
+  not: "not",
+  over: "too much, or above",
+  together: "together",
+  solid: "solid, or 3D"
+};
+const SUF = {
+  s:    { q: "more than one (plural)", d: "means more than one. This is called the plural." },
+  ly:   { q: "makes an adverb (a word that tells you how)", d: "makes an adverb. An adverb tells you how something is done." },
+  ed:   { q: "past tense, or something that has been done", d: "shows something happened in the past, or describes something that has been done." },
+  ate:  { q: "makes a verb (a doing word)", d: "makes a verb. A verb is a doing word, so ate means to do something." },
+  able: { q: "able to be done", d: "means able to be done." },
+  ing:  { q: "something happening now, or a describing word", d: "shows something is happening, or describes something." },
+  ic:   { q: "to do with, or like", d: "means to do with, or like." }
+};
+const KIND = { prefix: "Prefix", combo: "Combining form", root: "Root word", suffix: "Suffix" };
+
+const P = (t, pk) => ({ k: "prefix", t, f: t, pk });
+const C = (t, m) => ({ k: "combo", t, f: t, pk: "solid", m });
+const R = (t, m, bound = false) => ({ k: "root", t, f: t, m, bound });
+const S = (t, sk) => ({ k: "suffix", t, f: sk, sk });
+
+const W = [
+  { w: "centimetres", parts: [P("centi", "hundredth"), R("metre", "means a measure of length."), S("s", "s")],
+    mean: "A unit of length. 100 centimetres make 1 metre, so one centimetre is a hundredth of a metre. The s shows there is more than one.",
+    short: "A unit of length. It is one hundredth of a metre.",
+    ex: "My pencil is 15 centimetres long.",
+    note: "Centi is in other words too. A century is 100 years.", spell: "",
+    origin: "Latin centum means 100. Greek metron means a measure.", chk: false },
+  { w: "uniformly", parts: [P("uni", "one"), R("form", "means shape."), S("ly", "ly")],
+    mean: "In the same way all the way through, with no changes.",
+    short: "The same all the way through, with no changes.",
+    ex: "She spread the paint uniformly, so the wall was the same colour everywhere.",
+    note: "Your list splits this word as uni and formly. Formly is the root word form plus the suffix ly. Uniform is the word it grows from. It means having one shape or look.", spell: "",
+    origin: "Latin unus means one. Latin forma means shape.", chk: false },
+  { w: "outstretched", parts: [P("out", "out"), R("stretch", "means to pull long."), S("ed", "ed")],
+    mean: "Stretched out as far as it can go.",
+    short: "Stretched out as far as it can go.",
+    ex: "He waited with his arms outstretched to catch the ball.",
+    note: "Out is also a word on its own. Because of this, some books call outstretched a compound word, which is two words joined together.", spell: "",
+    origin: "Both out and stretch come from Old English, the language used in England over 1,000 years ago.", chk: false },
+  { w: "distracted", parts: [P("dis", "apart"), R("tract", "means to pull or draw. It comes from Latin trahere.", true), S("ed", "ed")],
+    mean: "Pulled away from what you were focusing on, so your attention goes somewhere else.",
+    short: "Pulled away from what you were focusing on.",
+    ex: "A loud bang distracted me, so I lost my place in the book.",
+    note: "Dis can also mean not, as in dislike. In distracted and dissolve it means apart or away.", spell: "",
+    origin: "Latin distrahere means to draw in different directions. Dis means away. Trahere means to draw or pull.", chk: true },
+  { w: "intimidated", parts: [P("in", "into"), R("timid", "means shy or scared."), S("ate", "ate"), S("d", "ed")],
+    mean: "Made to feel scared, or not brave enough.",
+    short: "Made to feel scared or small by someone or something.",
+    ex: "She felt intimidated by the huge, dark cave.",
+    note: "In means into here. Think of fear being put into you. In inevitable, in means not.",
+    spell: "This word has two suffixes. The suffix ed is written as just d, because its e joins with the e at the end of ate.",
+    origin: "Intimidare is an old Latin word that means to frighten. It is made from in and timidus, which means fearful.", chk: true },
+  { w: "inevitable", parts: [P("in", "not"), R("evit", "means to avoid. It comes from Latin evitare.", true), S("able", "able")],
+    mean: "Certain to happen. You cannot avoid it.",
+    short: "Certain to happen. It cannot be avoided.",
+    ex: "If you never practise, mistakes are inevitable.",
+    note: "In means not here. Inevitable is the opposite of avoidable.", spell: "",
+    origin: "Latin inevitabilis means unavoidable. In means not. Evitare means to avoid.", chk: true },
+  { w: "overpowering", parts: [P("over", "over"), R("power", "means strength."), S("ing", "ing")],
+    mean: "So strong that it is too much to cope with. It can be a smell, a feeling or a person.",
+    short: "So strong that it is too much to cope with.",
+    ex: "The smell of the bins was overpowering.",
+    note: "", spell: "",
+    origin: "Over is an Old English word. Power came into English from French.", chk: false },
+  { w: "immense", parts: [P("im", "not"), R("mense", "means measured. It comes from Latin mensus.", true)],
+    mean: "Very, very big. So huge that it is hard to measure.",
+    short: "Extremely big. So large that it is hard to measure.",
+    ex: "An immense whale swam under the boat.",
+    note: "This word has no suffix. Im is the same prefix as in. It changes to im before the letter m. So im plus mense means not measured.", spell: "",
+    origin: "Latin immensus means unmeasured. In means not. Mensus means measured.", chk: true },
+  { w: "compressed", parts: [P("com", "together"), R("press", "means to squeeze."), S("ed", "ed")],
+    mean: "Squeezed together so it takes up less space.",
+    short: "Squeezed together so it takes up less space.",
+    ex: "I compressed my coat into a tiny bag.",
+    note: "Com is also in combine, which means to join together.", spell: "",
+    origin: "Latin comprimere means to press together.", chk: false },
+  { w: "increased", parts: [P("in", "into"), R("crease", "means to grow.", true), S("d", "ed")],
+    mean: "Grew bigger, or went up in number or size.",
+    short: "Grew bigger, or went up in number or size.",
+    ex: "The price of a bus ticket increased by 20p.",
+    note: "This crease is not the crease in paper. It comes from Latin crescere, which means to grow. Dictionaries say in means in or on here. Into is a simpler way to think about it.",
+    spell: "The suffix ed is written as just d, because its e joins with the e at the end of crease.",
+    origin: "Latin increscere means to grow. In means in. Crescere means to grow.", chk: true },
+  { w: "dissolve", parts: [P("dis", "apart"), R("solve", "means to loosen. It comes from Latin solvere.")],
+    mean: "To break apart and mix into a liquid until you cannot see it any more.",
+    short: "To break up and mix into a liquid until you cannot see it.",
+    ex: "Sugar dissolves in hot tea.",
+    note: "This word has no suffix. Here solve does not mean to find an answer. Ice melts but sugar dissolves. Dissolve is for something mixing into a liquid.", spell: "",
+    origin: "Latin dissolvere means to loosen apart.", chk: false },
+  { w: "stereophonic", parts: [C("stereo", "means solid, or 3D. It comes from Greek stereos."), R("phon", "means sound or voice. It comes from Greek phone.", true), S("ic", "ic")],
+    mean: "Sound played through two or more speakers, so it seems to come from different places around you.",
+    short: "Sound played through two or more speakers, so it seems to come from different places.",
+    ex: "The stereophonic music made it feel like the band was in the room.",
+    note: "Stereo is called a combining form, not a prefix. It is a word part from Greek that joins with other word parts. It works a bit like a prefix, so it is included because it is on your list.", spell: "",
+    origin: "Stereo is a combining form. Phonic comes from Greek phone, which means sound or voice. The word dates from 1927.", chk: true },
+  { w: "impaled", parts: [P("im", "into"), R("pale", "means a stake. A stake is a pointed stick. It comes from Latin palus."), S("d", "ed")],
+    mean: "Stuck right through with a sharp, pointed object like a spike.",
+    short: "Stuck right through with a sharp, pointed object.",
+    ex: "The apple was impaled on a fork.",
+    note: "This pale is not the colour. Im is the same prefix as in, changed before the letter p. Your list ended at im, so the rest of the word was assumed.",
+    spell: "The suffix ed is written as just d, because its e joins with the e at the end of pale.",
+    origin: "Impalare is an old Latin word that means to push onto a stake. Im means into. Palus means a stake.", chk: true }
+];
+W.forEach(x => {
+  x.pk = x.parts[0].pk;
+  x.pm = PM[x.pk];
+  x.root = x.parts.find(p => p.k === "root");
+  x.sufs = x.parts.filter(p => p.k === "suffix");
+});
+
+const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const tiles = (x, neutral) => `<span class="tiles">${x.parts.map(p => `<span class="t ${neutral ? "n" : p.k}">${p.t}</span>`).join("")}</span>`;
+const eq = x => x.parts.map(p => `<span class="chip ${p.k}">${p.f}</span>`).join(" + ") + " = " + x.w;
+const meaningOf = p => p.k === "prefix" ? "means " + PM[p.pk] + "." : p.k === "suffix" ? SUF[p.sk].d : p.m;
+const chipHTML = (x, kind) => x.parts.map(p => {
+  const hl = kind === "suffix" ? p.k === "suffix" : (p.k === "prefix" || p.k === "combo");
+  return hl ? `<span class="hl ${kind}">${p.t}</span>` : p.t;
+}).join("");
+function shuffle(a) {
+  a = a.slice();
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  return a;
+}
+
+/* tabs */
+const tabs = $$(".tab");
+function show(id) {
+  tabs.forEach(t => t.setAttribute("aria-selected", String(t.dataset.p === id)));
+  $$(".panel").forEach(p => { p.hidden = p.id !== id; });
+}
+tabs.forEach((t, i) => {
+  t.addEventListener("click", () => show(t.dataset.p));
+  t.addEventListener("keydown", e => {
+    if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+      const n = tabs[(i + (e.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length];
+      n.focus(); show(n.dataset.p);
+    }
+  });
+});
+
+/* learn cards */
+$("#cards").innerHTML = W.map(x => `
+  <article class="card" id="w-${x.w}">
+    <button class="wordbtn" aria-expanded="false" aria-controls="d-${x.w}">
+      ${tiles(x)}
+      <span class="hint"><span class="h-closed">Tap to split the word and see what it means</span><span class="h-open">Tap to close</span></span>
+    </button>
+    <div class="detail" id="d-${x.w}" hidden>
+      <div class="row"><span class="lab">Built like this</span><span class="eq">${eq(x)}</span></div>
+      <div class="row"><span class="lab">The parts</span>
+        <div class="parts">${x.parts.map(p => `<div class="prow"><span class="chip ${p.k}">${KIND[p.k]}</span><span><b>${p.f}</b> ${meaningOf(p)}</span>${p.bound ? '<span class="badge">Bound root: not a word on its own</span>' : ""}</div>`).join("")}</div>
+      </div>
+      ${x.spell ? `<p class="note"><b>Spelling.</b> ${x.spell}</p>` : ""}
+      <div class="row"><span class="lab">Put together</span><span class="mean">${x.mean}</span></div>
+      <div class="row"><span class="lab">In a sentence</span><span>${x.ex}</span></div>
+      ${x.note ? `<p class="note"><b>Watch out.</b> ${x.note}</p>` : ""}
+      <div class="row"><span class="lab">Where it comes from</span><span>${x.origin}</span><span class="src">${x.chk ? "Checked in an online word history dictionary (Etymonline)." : "Not yet checked in a dictionary."}</span></div>
+    </div>
+  </article>`).join("");
+
+function toggle(card, force) {
+  const open = force === undefined ? !card.classList.contains("open") : force;
+  card.classList.toggle("open", open);
+  $(".wordbtn", card).setAttribute("aria-expanded", String(open));
+  $(".detail", card).hidden = !open;
+}
+$$(".card").forEach(c => $(".wordbtn", c).addEventListener("click", () => toggle(c)));
+$("#openAll").addEventListener("click", () => $$(".card").forEach(c => toggle(c, true)));
+$("#closeAll").addEventListener("click", () => $$(".card").forEach(c => toggle(c, false)));
+
+function openWord(w) {
+  show("learn");
+  const c = document.getElementById("w-" + w);
+  if (!c) return;
+  toggle(c, true);
+  c.scrollIntoView({ block: "center", behavior: reduce ? "auto" : "smooth" });
+  $(".wordbtn", c).focus({ preventScroll: true });
+}
+
+/* families */
+const FAMS = [
+  { head: "in", cls: "prefix", pk: "into", words: ["intimidated", "increased", "impaled"], tip: "Putting something inside. Spelt im before p." },
+  { head: "in", cls: "prefix", pk: "not", words: ["inevitable", "immense"], tip: "Makes the word mean the opposite. Spelt im before m." },
+  { head: "dis", cls: "prefix", pk: "apart", words: ["distracted", "dissolve"], tip: "Pulling or breaking things apart." },
+  { head: "com", cls: "prefix", pk: "together", words: ["compressed"], tip: "Bringing things close." },
+  { head: "centi", cls: "prefix", pk: "hundredth", words: ["centimetres"], tip: "Think of 100, as in century." },
+  { head: "uni", cls: "prefix", pk: "one", words: ["uniformly"], tip: "Think of one, as in unicycle." },
+  { head: "out", cls: "prefix", pk: "out", words: ["outstretched"], tip: "Going outwards." },
+  { head: "over", cls: "prefix", pk: "over", words: ["overpowering"], tip: "More than is comfortable." },
+  { head: "stereo", cls: "combo", pk: "solid", words: ["stereophonic"], tip: "A combining form, not a prefix. Sound that feels 3D." }
+];
+const wchips = (ws, kind) => ws.map(x => `<button class="wchip" data-w="${x.w}">${chipHTML(x, kind)}</button>`).join("");
+$("#families").innerHTML = FAMS.map(f => `
+  <div class="fam">
+    <div class="lead"><span class="t ${f.cls}">${f.head}</span><span class="says">means ${PM[f.pk]}</span><span class="hint">${f.tip}</span></div>
+    <div class="wchips">${wchips(f.words.map(w => W.find(y => y.w === w)), "prefix")}</div>
+  </div>`).join("");
+$("#sfamilies").innerHTML = Object.keys(SUF).map(k => {
+  const ws = W.filter(x => x.sufs.some(s => s.sk === k));
+  return ws.length ? `<div class="fam">
+    <div class="lead"><span class="t suffix">${k}</span><span class="says">${k} ${SUF[k].d}</span></div>
+    <div class="wchips">${wchips(ws, "suffix")}</div></div>` : "";
+}).join("") + `<div class="fam">
+    <div class="lead"><span class="t n">none</span><span class="says">No suffix</span><span class="hint">These words end with their root word.</span></div>
+    <div class="wchips">${wchips(W.filter(x => !x.sufs.length), "prefix")}</div></div>`;
+$$(".wchip").forEach(b => b.addEventListener("click", () => openWord(b.dataset.w)));
+
+/* quiz */
+let Q;
+function startQuiz() {
+  Q = {
+    items: shuffle(W).slice(0, 10).map(x => {
+      const ts = ["p", "m", "r"].concat(x.sufs.length ? ["s"] : []);
+      const t = ts[Math.floor(Math.random() * ts.length)];
+      return { x, t, sp: t === "s" ? shuffle(x.sufs)[0] : null };
+    }),
+    i: 0, score: 0, missed: []
+  };
+  renderQ();
+}
+function options(x, t, sp) {
+  if (t === "p") {
+    const keys = shuffle(Object.keys(PM).filter(k => k !== x.pk)).slice(0, 3);
+    return shuffle([{ label: PM[x.pk], ok: true }, ...keys.map(k => ({ label: PM[k], ok: false }))]);
+  }
+  if (t === "m") {
+    const others = shuffle(W.filter(y => y.w !== x.w)).slice(0, 3);
+    return shuffle([{ label: x.w, ok: true }, ...others.map(y => ({ label: y.w, ok: false }))]);
+  }
+  if (t === "r") return shuffle(x.parts.map(p => ({ label: p.t, ok: p.k === "root" })));
+  const keys = shuffle(Object.keys(SUF).filter(k => k !== sp.sk)).slice(0, 3);
+  return shuffle([{ label: SUF[sp.sk].q, ok: true }, ...keys.map(k => ({ label: SUF[k].q, ok: false }))]);
+}
+function renderQ() {
+  const box = $("#quizbox");
+  const n = Q.items.length;
+  if (Q.i >= n) {
+    const s = Q.score;
+    const verdict = s >= 9 ? "Strong result. You know these words well."
+      : s >= 6 ? "A reasonable start. Some words still need work. Look at the ones below."
+      : "More practice needed. Go back to Learn the words, then try again.";
+    box.innerHTML = `<div class="qcard">
+      <p class="score">${s} out of ${n}</p>
+      <p class="q">${verdict}</p>
+      ${Q.missed.length ? `<div class="row"><span class="lab">Words to look at again</span><div class="wchips">${wchips(Q.missed, "prefix")}</div></div>` : ""}
+      <div class="actions"><button class="btn primary" id="again">Try 10 new questions</button></div>
+    </div>`;
+    $$(".wchip", box).forEach(b => b.addEventListener("click", () => openWord(b.dataset.w)));
+    $("#again").addEventListener("click", startQuiz);
+    return;
+  }
+  const { x, t, sp } = Q.items[Q.i];
+  const opts = options(x, t, sp);
+  const head = {
+    p: `<p class="q">What does the blue part of this word mean?</p>${tiles(x)}`,
+    m: `<p class="q">Which word matches this meaning?</p><p class="mean">${x.short}</p>`,
+    r: `<p class="q">Which part is the root word?</p>${tiles(x, true)}`,
+    s: sp ? `<p class="q">What does the suffix <span class="chip suffix">${sp.f}</span> do in this word?</p>${tiles(x)}` : ""
+  }[t];
+  const hint = {
+    p: "Think about what the whole word means: " + x.short,
+    m: "The first part means " + x.pm + ".",
+    r: "The root word carries the main meaning. A prefix comes first. A suffix comes last.",
+    s: "Think about the job the word does in this sentence: " + x.ex
+  }[t];
+  box.innerHTML = `
+    <div class="qhead"><span>Question ${Q.i + 1} of ${n}</span><span>Score ${Q.score}</span></div>
+    <div class="bar"><i style="width:${(Q.i / n) * 100}%"></i></div>
+    <div class="qcard">
+      ${head}
+      <div class="choices">${opts.map((o, k) => `<button class="choice" data-k="${k}">${o.label}</button>`).join("")}</div>
+      <div class="actions"><button class="btn small" id="hintBtn">Show a hint</button></div>
+      <p class="hint" id="hintTxt" hidden>${hint}</p>
+      <div class="fb" id="fb" aria-live="polite" hidden></div>
+      <div class="actions"><button class="btn primary" id="next" hidden>${Q.i + 1 === n ? "See my score" : "Next question"}</button></div>
+    </div>`;
+  $("#hintBtn").addEventListener("click", () => { $("#hintTxt").hidden = false; });
+  $$(".choice", box).forEach(b => b.addEventListener("click", () => {
+    const o = opts[+b.dataset.k];
+    $$(".choice", box).forEach((c, k) => {
+      c.disabled = true;
+      if (opts[k].ok) { c.classList.add("right"); c.insertAdjacentHTML("beforeend", '<span class="tag">Correct answer</span>'); }
+    });
+    if (!o.ok) { b.classList.add("wrong"); b.insertAdjacentHTML("beforeend", '<span class="tag">Your answer</span>'); }
+    const why = {
+      p: `<b>${x.parts[0].f}</b> means <b>${x.pm}</b>. ${x.w} means: ${x.short}`,
+      m: `<b>${x.w}</b> is ${x.parts.map(p => `<b>${p.f}</b>`).join(" + ")}. ${x.short}`,
+      r: `The root word is <b>${x.root.f}</b>. ` + x.parts.filter(p => p !== x.root).map(p => `<b>${p.f}</b> is ${p.k === "prefix" ? "the prefix" : p.k === "combo" ? "the combining form" : "a suffix"}`).join(", ") + ".",
+      s: sp ? `<b>${sp.f}</b> ${SUF[sp.sk].d}` : ""
+    }[t];
+    const fb = $("#fb");
+    fb.className = "fb " + (o.ok ? "good" : "bad");
+    fb.innerHTML = `<b>${o.ok ? "Correct." : "Not quite."}</b><span>${why}</span>`;
+    fb.hidden = false;
+    if (o.ok) Q.score++; else Q.missed.push(x);
+    $("#hintBtn").hidden = true;
+    const nx = $("#next"); nx.hidden = false; nx.focus();
+  }));
+  $("#next").addEventListener("click", () => { Q.i++; renderQ(); });
+}
+startQuiz();
+</script>
+
+</body></html>
